@@ -24,6 +24,9 @@ Analyze positions carefully considering:
 - Strategic direction of play
 - Tactical move sequences
 - Formation quality and efficiency
+
+IMPORTANT: Go coordinates use letters A-H, J-T (the letter 'I' is skipped to avoid confusion with 1).
+Valid coordinates: A1-T19 (excluding I). Examples: D4, K10, Q16 are valid. I4, I10 are INVALID.
 """
 
 def format_board_as_text(board, board_width, board_range):
@@ -96,7 +99,7 @@ Rules reminder:
 - Empty intersections are marked with '.'
 - Black stones are marked with 'X'
 - White stones are marked with 'O'
-- Coordinates are like 'D4', 'K10', etc.
+- Coordinates use A-H, J-T (letter 'I' is NOT used). Examples: D4, K10, Q16
 - You can play 'PASS' if no good move is available
 
 Analyze the position and suggest your next move. Consider:
@@ -115,8 +118,7 @@ Provide your response with:
 - move_type: 'coordinate' for normal moves, 'pass' for passing, 'resign' if position is hopeless
 - move: The actual coordinate (e.g., 'D4', 'K10') or 'PASS' or 'RESIGN'
 - reasoning: Brief explanation of your choice
-- thinking: Your detailed thought process
-- confidence: Rate your confidence in this move from 1-10"""
+- thinking: Your detailed thought process"""
 
         # Check if this is a reasoning model (o1, o1-preview, o1-mini)
         is_reasoning_model = any(x in AZURE_DEPLOYMENT.lower() for x in ['o1', 'reasoning'])
@@ -150,7 +152,6 @@ Provide your response with:
                 move = move_data.get('move', '').strip().upper()
                 reasoning = move_data.get('reasoning', '')
                 thinking = move_data.get('thinking', '')
-                confidence = move_data.get('confidence', None)
             except:
                 # Fallback: try to extract move from text
                 eprint(f"Could not parse JSON, raw response: {content}")
@@ -184,13 +185,10 @@ Provide your response with:
             move = move_response.move.strip().upper()
             reasoning = move_response.reasoning
             thinking = move_response.thinking if move_response.thinking else ""
-            confidence = move_response.confidence if move_response.confidence else None
             tokens = vars(response.usage) if hasattr(response, 'usage') else {}
 
         # Log the response
         eprint(f"\nLLM suggested move: {move} (type: {move_type})")
-        if confidence:
-            eprint(f"Confidence: {confidence}/10")
         if thinking:
             eprint(f"\n=== THINKING PROCESS ===")
             eprint(thinking)
@@ -202,7 +200,6 @@ Provide your response with:
             'move': move,
             'reasoning': reasoning,
             'thinking': thinking,
-            'confidence': confidence,
             'tokens': tokens
         }
 
