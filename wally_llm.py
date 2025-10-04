@@ -1,10 +1,3 @@
-###################################
-#
-#   WALLY LLM by Jonathan K. Millen
-#     (Azure OpenAI Integration)
-#
-###################################
-
 from __future__ import print_function
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -459,93 +452,57 @@ def captures(color):
 
 # generate move
 def genmove(color):
-    """Generate move - LLM only, no fallback"""
+    """Generate move - LLM only, retry until valid or max retries"""
     global retry_count
 
     if not USE_LLM:
         eprint("ERROR: LLM not configured. Check config.py")
         return "resign"
 
-    # Check if max retries exceeded
-    if retry_count >= MAX_RETRIES_PER_GAME:
-        eprint(f"ERROR: Maximum retries ({MAX_RETRIES_PER_GAME}) exceeded for this game")
-        color_str = 'Black' if color == BLACK else 'White'
-        move_history.append(f"{color_str} resigns (max retries exceeded)")
-        return "resign"
+    color_str = 'Black' if color == BLACK else 'White'
 
-    # Get LLM move using openai_go module
-    result = get_go_move(board, BOARD_WIDTH, BOARD_RANGE, move_history, color)
-    if not result:
-        retry_count += 1
-        eprint(f"ERROR: Failed to get LLM response (retry {retry_count}/{MAX_RETRIES_PER_GAME})")
-
-        if retry_count >= MAX_RETRIES_PER_GAME:
-            color_str = 'Black' if color == BLACK else 'White'
-            move_history.append(f"{color_str} resigns (max retries exceeded)")
-            return "resign"
-        return "resign"
-
-    move_type = result.get('move_type', 'coordinate')
-    llm_move = result['move']
-
-    # Handle resign
-    if move_type == 'resign' or llm_move == 'RESIGN':
-        eprint("LLM decided to resign")
-        color_str = 'Black' if color == BLACK else 'White'
-        move_history.append(f"{color_str} resigns")
-        return "resign"
-
-    # Handle pass
-    if move_type == 'pass' or llm_move == 'PASS':
-        eprint("LLM chose to pass")
-        color_str = 'Black' if color == BLACK else 'White'
-        move_history.append(f"{color_str} passes")
-        return "pass"
-
-    # Validate coordinate move
-    square = validate_llm_move(llm_move, color)
-    if not square:
-        retry_count += 1
-        eprint(f"ERROR: LLM returned invalid move: {llm_move} (retry {retry_count}/{MAX_RETRIES_PER_GAME})")
-
-        # Check if we can retry
-        if retry_count >= MAX_RETRIES_PER_GAME:
-            eprint(f"Maximum retries exceeded")
-            color_str = 'Black' if color == BLACK else 'White'
-            move_history.append(f"{color_str} resigns (max retries exceeded)")
-            return "resign"
-
-        # Retry
-        eprint("Retrying with LLM...")
+    # Try to get a valid move, retrying up to MAX_RETRIES_PER_GAME times
+    while retry_count < MAX_RETRIES_PER_GAME:
+        # Get LLM move
         result = get_go_move(board, BOARD_WIDTH, BOARD_RANGE, move_history, color)
-        if result:
-            llm_move = result['move']
-            move_type = result.get('move_type', 'coordinate')
 
-            # Handle special moves on retry
-            if move_type == 'pass' or llm_move == 'PASS':
-                color_str = 'Black' if color == BLACK else 'White'
-                move_history.append(f"{color_str} passes")
-                return "pass"
+        if not result:
+            retry_count += 1
+            eprint(f"ERROR: Failed to get LLM response (attempt {retry_count}/{MAX_RETRIES_PER_GAME})")
+            continue  # Retry
 
-            square = validate_llm_move(llm_move, color)
+        move_type = result.get('move_type', 'coordinate')
+        llm_move = result['move']
 
+        # Handle resign
+        if move_type == 'resign' or llm_move == 'RESIGN':
+            eprint("LLM decided to resign")
+            move_history.append(f"{color_str} resigns")
+            return "resign"
+
+        # Handle pass
+        if move_type == 'pass' or llm_move == 'PASS':
+            eprint("LLM chose to pass")
+            move_history.append(f"{color_str} passes")
+            return "pass"
+
+        # Validate coordinate move
+        square = validate_llm_move(llm_move, color)
         if not square:
             retry_count += 1
-            eprint(f"ERROR: LLM failed after retry (total retries: {retry_count}/{MAX_RETRIES_PER_GAME})")
-            color_str = 'Black' if color == BLACK else 'White'
-            move_history.append(f"{color_str} resigns (illegal moves)")
-            return "resign"
+            eprint(f"ERROR: Invalid move {llm_move} (attempt {retry_count}/{MAX_RETRIES_PER_GAME})")
+            continue  # Retry
 
-    # Make the move
-    eprint(f"Playing LLM move: {llm_move}")
-    set_stone(square, color)
+        # Valid move found!
+        eprint(f"Playing LLM move: {llm_move}")
+        set_stone(square, color)
+        move_history.append(f"{color_str} plays {llm_move}")
+        return llm_move
 
-    # Record move in history
-    color_str = 'Black' if color == BLACK else 'White'
-    move_history.append(f"{color_str} plays {llm_move}")
-
-    return llm_move
+    # Max retries exceeded
+    eprint(f"ERROR: Maximum retries ({MAX_RETRIES_PER_GAME}) exceeded")
+    move_history.append(f"{color_str} resigns (max retries exceeded)")
+    return "resign"
 
 # Traditional AI removed - LLM only mode
 
