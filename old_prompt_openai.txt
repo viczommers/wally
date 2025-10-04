@@ -1,0 +1,20 @@
+This did not pass Azure Content Filter:
+
+Analyze the position and suggest your next move. Consider:
+1. Capturing opponent stones in atari (1 liberty)
+2. Saving your own groups in atari
+3. Building territory and influence
+4. Making strong shapes
+
+Think through the position step by step:
+- What are the critical areas on the board?
+- What are the threats and opportunities?
+- What variations did you consider?
+- Why is your chosen move the best?
+
+Analyze positions carefully considering:
+- Life and death of groups
+- Territory and influence balance
+- Strategic direction of play
+- Tactical sequences (capturing, saving stones)
+- Shape and efficiency
